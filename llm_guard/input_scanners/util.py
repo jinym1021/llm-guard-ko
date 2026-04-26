@@ -9,6 +9,11 @@ from .base import Scanner
 from .code import Code
 from .gibberish import Gibberish
 from .invisible_text import InvisibleText
+from .korean_content_filter import KoreanContentFilter
+from .korean_injection import KoreanInjection
+from .korean_pipeline import KoreanPipeline
+from .korean_pii import KoreanPII
+from .korean_semantic import KoreanSemantic
 from .language import Language
 from .prompt_injection import PromptInjection
 from .regex import Regex
@@ -55,6 +60,21 @@ def get_scanner_by_name(scanner_name: str, scanner_config: dict | None = None) -
 
     if scanner_name == "InvisibleText":
         return InvisibleText()
+
+    if scanner_name == "KoreanContentFilter":
+        return KoreanContentFilter(**scanner_config)
+
+    if scanner_name == "KoreanPipeline":
+        return KoreanPipeline(**scanner_config)
+
+    if scanner_name == "KoreanInjection":
+        return KoreanInjection(**scanner_config)
+
+    if scanner_name == "KoreanPII":
+        return KoreanPII(**scanner_config)
+
+    if scanner_name == "KoreanSemantic":
+        return KoreanSemantic(**scanner_config)
 
     if scanner_name == "Language":
         return Language(**scanner_config)

@@ -1,13 +1,14 @@
 [project]
-name = "llm-guard"
-description = "LLM-Guard is a comprehensive tool designed to fortify the security of Large Language Models (LLMs). By offering sanitization, detection of harmful language, prevention of data leakage, and resistance against prompt injection attacks, LLM-Guard ensures that your interactions with LLMs remain safe and secure."
+name = "llm-guard-ko"
+description = "Korean-focused fork of llm-guard: a 3-layer guardrail (regex → sentence-embedding semantic match → SGuard local classifier) tuned for Korean PII, prompt injection, jailbreaks, and MLCommons-taxonomy content safety. Drop-in compatible with upstream llm-guard scanners."
 authors = [
-  { name = "Protect AI", email = "community@protectai.com"}
+  { name = "Yejin Moon", email = "jayleenym@gmail.com"},
+  { name = "Protect AI (upstream)", email = "community@protectai.com"}
 ]
-keywords = ["llm", "language model", "security", "adversarial attacks", "prompt injection", "prompt leakage", "PII detection", "self-hardening", "firewall"]
+keywords = ["llm", "language model", "security", "adversarial attacks", "prompt injection", "prompt leakage", "PII detection", "self-hardening", "firewall", "Korean", "한국어", "SGuard"]
 license = { file="LICENSE" }
 readme = "README.md"
-version = "0.3.16"
+version = "0.1.0"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -40,6 +41,17 @@ onnxruntime = [
 onnxruntime-gpu = [
   "optimum[onnxruntime-gpu]==1.25.2",
 ]
+# Korean-pipeline extras — added in llm-guard-ko v0.1.
+semantic = [
+  "sentence-transformers>=2.7",
+]
+content-filter = [
+  "accelerate>=0.30",
+  "transformers>=4.40",
+]
+ko-all = [
+  "llm-guard-ko[semantic,content-filter]",
+]
 docs-dev = [
   "mkdocs>=1.6,<2",
   "mkdocs-autorefs==1.4.1",
@@ -50,7 +62,7 @@ docs-dev = [
   "mkdocs-swagger-ui-tag>=0.7.1",
 ]
 dev = [
-  "llm_guard[docs-dev]",
+  "llm-guard-ko[docs-dev]",
   "autoflake>=2,<3",
   "pytest>=8.3.5,<9",
   "pytest-cov>=6.1.1,<7",
@@ -60,14 +72,14 @@ dev = [
 ]
 
 [project.urls]
-homepage = "https://github.com/protectai/llm-guard"
-documentation = "https://protectai.github.io/llm-guard/"
-repository = "https://github.com/protectai/llm-guard"
-issues = "https://github.com/protectai/llm-guard/issues"
-changelog = "https://protectai.github.io/llm-guard/changelog/"
+homepage = "https://github.com/jinym1021/llm-guard-ko"
+repository = "https://github.com/jinym1021/llm-guard-ko"
+# Upstream references:
+upstream = "https://github.com/protectai/llm-guard"
+upstream-documentation = "https://protectai.github.io/llm-guard/"
 
 [tool.setuptools]
-packages = {find = {where=["."], include=["llm_guard", "llm_guard.*"]}}
+packages = {find = {where=["."], include=["llm_guard", "llm_guard.*", "regex_builder"]}}
 license-files = []
 
 [tool.pytest.ini_options]
