@@ -47,6 +47,7 @@ semantic = [
 ]
 content-filter = [
   "accelerate>=0.30",
+  "transformers>=4.40",
 ]
 ko-all = [
   "llm-guard-ko[semantic,content-filter]",

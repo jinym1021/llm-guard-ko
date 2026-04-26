@@ -2,6 +2,7 @@
 
 from .ban_code import BanCode
 from .ban_competitors import BanCompetitors
+from .korean_content_filter import KoreanContentFilter
 from .korean_injection import KoreanInjection
 from .korean_pii import KoreanPII
 from .korean_semantic import KoreanSemantic
@@ -51,6 +52,7 @@ __all__ = [
     "Sentiment",
     "Toxicity",
     "URLReachability",
+    "KoreanContentFilter",
     "KoreanInjection",
     "KoreanPII",
     "KoreanSemantic",

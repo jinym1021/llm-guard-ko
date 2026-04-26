@@ -9,6 +9,7 @@ from .code import Code
 from .emotion_detection import EmotionDetection
 from .gibberish import Gibberish
 from .invisible_text import InvisibleText
+from .korean_content_filter import KoreanContentFilter
 from .korean_injection import KoreanInjection
 from .korean_pii import KoreanPII
 from .korean_semantic import KoreanSemantic
@@ -31,6 +32,7 @@ __all__ = [
     "EmotionDetection",
     "Gibberish",
     "InvisibleText",
+    "KoreanContentFilter",
     "KoreanInjection",
     "KoreanPII",
     "KoreanSemantic",
