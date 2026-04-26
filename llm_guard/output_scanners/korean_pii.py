@@ -43,10 +43,12 @@ class KoreanPII:
         rule_file: str | Path | None = None,
     ) -> None:
         self._redact = redact
-        if patterns is not None:
+        if rule_file is not None:
+            source = load_pii_rules(rule_file)
+        elif patterns is not None:
             source = patterns
         else:
-            source = load_pii_rules(rule_file)
+            source = load_pii_rules()
         self._compiled: list[tuple[str, Pattern[str]]] = [
             (label, re.compile(pattern)) for label, pattern in source.items()
         ]

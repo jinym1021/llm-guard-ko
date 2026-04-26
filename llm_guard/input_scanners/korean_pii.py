@@ -28,12 +28,13 @@ class KoreanPII:
         redact: If True (default), replace matches with ``[REDACTED]`` in
             the returned text. If False, return the original text but
             still flag it as invalid.
-        patterns: Optional override for the pattern dict. When provided,
-            takes precedence over *rule_file* and the default rule resolution.
+        patterns: Optional override for the pattern dict. Defaults to
+            :data:`llm_guard.input_scanners.korean_patterns.KOREAN_PII_PATTERNS`.
         rule_file: Path to a ``pii_rule.json`` file. When provided, rules are
-            loaded from the file instead of the default resolution order
-            (``$LLM_GUARD_PII_RULES`` env var → bundled ``pii_rule.json``).
-            See :func:`~llm_guard.input_scanners.korean_patterns.load_pii_rules`.
+            loaded from the file instead of *patterns* or the built-in defaults.
+            Each entry maps a Korean rule name (e.g. ``"주민등록번호"``) to either
+            a plain example string (``"971021-2333333"``) or a regex pattern
+            directly. See :func:`~llm_guard.input_scanners.korean_patterns.load_pii_rules`.
     """
 
     def __init__(
@@ -44,10 +45,12 @@ class KoreanPII:
         rule_file: str | Path | None = None,
     ) -> None:
         self._redact = redact
-        if patterns is not None:
+        if rule_file is not None:
+            source = load_pii_rules(rule_file)
+        elif patterns is not None:
             source = patterns
         else:
-            source = load_pii_rules(rule_file)
+            source = load_pii_rules()
         self._compiled: list[tuple[str, Pattern[str]]] = [
             (label, re.compile(pattern)) for label, pattern in source.items()
         ]
