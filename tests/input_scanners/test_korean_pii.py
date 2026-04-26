@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from llm_guard.ko import KoreanPII
+from llm_guard.input_scanners import KoreanPII
 
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,8 @@ from .code import Code
 from .emotion_detection import EmotionDetection
 from .gibberish import Gibberish
 from .invisible_text import InvisibleText
+from .korean_injection import KoreanInjection
+from .korean_pii import KoreanPII
 from .language import Language
 from .prompt_injection import PromptInjection
 from .regex import Regex
@@ -28,6 +30,8 @@ __all__ = [
     "EmotionDetection",
     "Gibberish",
     "InvisibleText",
+    "KoreanInjection",
+    "KoreanPII",
     "Language",
     "PromptInjection",
     "Regex",

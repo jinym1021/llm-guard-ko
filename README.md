@@ -19,7 +19,7 @@ pip install -e ".[ko-all]"           # future: Layer 2 + Layer 3 extras
 
 ```python
 from llm_guard import scan_prompt
-from llm_guard.ko import KoreanPII, KoreanInjection
+from llm_guard.input_scanners import KoreanPII, KoreanInjection
 
 sanitized, valid, risk = scan_prompt(
     [KoreanPII(), KoreanInjection()],
@@ -31,12 +31,14 @@ sanitized, valid, risk = scan_prompt(
 
 ## What's in 0.1.0
 
-- `llm_guard.ko.KoreanPII` — redacts 주민등록번호, 전화번호, 사업자등록번호,
-  계좌번호, 신용카드번호.
-- `llm_guard.ko.KoreanInjection` — flags 8 categories of prompt-injection
-  phrases (이전 지시 무시, 지금부터 너는, 역할극, 탈옥, 개발자 모드, 제한
-  없는 AI, 인 척 / 행동 처럼, 필터/가드레일 우회).
-- Upstream `llm_guard.*` modules untouched — use them exactly as before.
+- `llm_guard.input_scanners.KoreanPII` — redacts 주민등록번호, 전화번호,
+  사업자등록번호, 계좌번호, 신용카드번호.
+- `llm_guard.input_scanners.KoreanInjection` — flags 8 categories of
+  prompt-injection phrases (이전 지시 무시, 지금부터 너는, 역할극, 탈옥,
+  개발자 모드, 제한 없는 AI, 인 척 / 행동 처럼, 필터/가드레일 우회).
+- Both scanners live alongside every other upstream scanner under
+  `llm_guard/input_scanners/`, so they work with `scan_prompt` /
+  `get_scanner_by_name` unchanged.
 
 Everything below this line is the original upstream README, preserved as
 reference for upstream features.

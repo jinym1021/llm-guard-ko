@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 from typing import Pattern
 
-from llm_guard.ko.patterns import KOREAN_INJECTION_PATTERNS
+from llm_guard.input_scanners.korean_patterns import KOREAN_INJECTION_PATTERNS
 
 
 class KoreanInjection:

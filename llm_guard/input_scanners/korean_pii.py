@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from typing import Pattern
 
-from llm_guard.ko.patterns import KOREAN_PII_PATTERNS
+from llm_guard.input_scanners.korean_patterns import KOREAN_PII_PATTERNS
 
 REDACTION_MARKER = "[REDACTED]"
 
@@ -28,7 +28,7 @@ class KoreanPII:
             the returned text. If False, return the original text but
             still flag it as invalid.
         patterns: Optional override for the pattern dict. Defaults to
-            :data:`llm_guard.ko.patterns.KOREAN_PII_PATTERNS`.
+            :data:`llm_guard.input_scanners.korean_patterns.KOREAN_PII_PATTERNS`.
     """
 
     def __init__(

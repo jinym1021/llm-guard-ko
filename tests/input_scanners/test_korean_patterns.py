@@ -1,10 +1,10 @@
-"""Unit tests for the raw pattern dicts in ``llm_guard.ko.patterns``."""
+"""Unit tests for the raw pattern dicts in ``llm_guard.input_scanners.korean_patterns``."""
 
 from __future__ import annotations
 
 import re
 
-from llm_guard.ko.patterns import (
+from llm_guard.input_scanners.korean_patterns import (
     KOREAN_INJECTION_PATTERNS,
     KOREAN_PII_PATTERNS,
 )
