@@ -11,6 +11,7 @@ from .gibberish import Gibberish
 from .invisible_text import InvisibleText
 from .korean_injection import KoreanInjection
 from .korean_pii import KoreanPII
+from .korean_semantic import KoreanSemantic
 from .language import Language
 from .prompt_injection import PromptInjection
 from .regex import Regex
@@ -32,6 +33,7 @@ __all__ = [
     "InvisibleText",
     "KoreanInjection",
     "KoreanPII",
+    "KoreanSemantic",
     "Language",
     "PromptInjection",
     "Regex",
