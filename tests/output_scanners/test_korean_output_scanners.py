@@ -1,7 +1,7 @@
 import pytest
-from llm_guard_ko.output_scanners.korean_no_refusal import KoreanNoRefusal
-from llm_guard_ko.output_scanners.korean_pii import KoreanPII
-from llm_guard_ko.output_scanners.korean_toxicity import KoreanToxicity
+from llm_guard.output_scanners.korean_no_refusal import KoreanNoRefusal
+from llm_guard.output_scanners.korean_pii import KoreanPII
+from llm_guard.output_scanners.korean_toxicity import KoreanToxicity
 
 @pytest.mark.parametrize(
     "output_text,expected_valid",
