@@ -13,9 +13,10 @@ Conventions match upstream llm-guard:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Pattern
 
-from llm_guard.input_scanners.korean_patterns import KOREAN_PII_PATTERNS
+from llm_guard.input_scanners.korean_patterns import load_pii_rules
 
 REDACTION_MARKER = "[REDACTED]"
 
@@ -27,8 +28,12 @@ class KoreanPII:
         redact: If True (default), replace matches with ``[REDACTED]`` in
             the returned text. If False, return the original text but
             still flag it as invalid.
-        patterns: Optional override for the pattern dict. Defaults to
-            :data:`llm_guard.input_scanners.korean_patterns.KOREAN_PII_PATTERNS`.
+        patterns: Optional override for the pattern dict. When provided,
+            takes precedence over *rule_file* and the default rule resolution.
+        rule_file: Path to a ``pii_rule.json`` file. When provided, rules are
+            loaded from the file instead of the default resolution order
+            (``$LLM_GUARD_PII_RULES`` env var → bundled ``pii_rule.json``).
+            See :func:`~llm_guard.input_scanners.korean_patterns.load_pii_rules`.
     """
 
     def __init__(
@@ -36,9 +41,13 @@ class KoreanPII:
         *,
         redact: bool = True,
         patterns: dict[str, str] | None = None,
+        rule_file: str | Path | None = None,
     ) -> None:
         self._redact = redact
-        source = patterns if patterns is not None else KOREAN_PII_PATTERNS
+        if patterns is not None:
+            source = patterns
+        else:
+            source = load_pii_rules(rule_file)
         self._compiled: list[tuple[str, Pattern[str]]] = [
             (label, re.compile(pattern)) for label, pattern in source.items()
         ]
