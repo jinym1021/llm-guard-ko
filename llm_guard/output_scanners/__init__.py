@@ -10,6 +10,8 @@ from .korean_pipeline import KoreanPipeline
 from .korean_semantic import KoreanSemantic
 from .korean_sensitive import KoreanSensitive
 from .korean_toxicity import KoreanToxicity
+from .korean_content_filter import KoreanContentFilter
+from .korean_injection import KoreanInjection
 from .ban_substrings import BanSubstrings
 from .ban_topics import BanTopics
 from .bias import Bias
@@ -67,5 +69,7 @@ __all__ = [
     "KoreanSemantic",
     "KoreanSensitive",
     "KoreanToxicity",
+    "KoreanContentFilter",
+    "KoreanInjection",
     "get_scanner_by_name",
 ]

@@ -8,20 +8,11 @@ Layer 1, because false positives here get escalated to Layer 2/3 by
 
 from __future__ import annotations
 
-# ---------------------------------------------------------------------------
-# PII patterns — match on Korean-specific identifiers.
-# ---------------------------------------------------------------------------
-# Note on RRN (주민등록번호): the 7th digit encodes sex + century
-# (1-4 valid for modern records; 5-8 for foreign residents). We accept
-# 1-8 to cover both citizens and foreign residents.
-KOREAN_PII_PATTERNS: dict[str, str] = {
-    "resident_registration_number": r"\d{6}-[1-8]\d{6}",
-    "phone_number_mobile": r"01[016789]-?\d{3,4}-?\d{4}",
-    "phone_number_landline": r"0(?:2|[3-6][1-5])-?\d{3,4}-?\d{4}",
-    "business_registration_number": r"\d{3}-\d{2}-\d{5}",
-    "bank_account_number": r"\d{3,6}-\d{2,6}-\d{4,7}",
-    "credit_card_number": r"\d{4}-\d{4}-\d{4}-\d{4}",
-}
+import json
+import os
+from pathlib import Path
+
+from regex_builder import infer_from_example
 
 # ---------------------------------------------------------------------------
 # Prompt-injection / jailbreak phrases — match case-insensitively.
@@ -98,3 +89,88 @@ __all__ = [
     "KOREAN_TOXIC_PATTERNS",
     "KOREAN_REFUSAL_PATTERNS",
 ]
+# pii_rule.json loader — converts user-supplied examples into patterns.
+# ---------------------------------------------------------------------------
+
+DEFAULT_RULES_PATH = Path(__file__).parent / "pii_rule.json"
+
+_REGEX_INDICATOR_CHARS = frozenset(r"\[()*+?.{}^$|")
+
+
+def _is_regex(value: str) -> bool:
+    """Return True if *value* looks like a regex rather than a plain example."""
+    return any(c in _REGEX_INDICATOR_CHARS for c in value)
+
+
+def load_pii_rules(path: str | Path | None = None) -> dict[str, str]:
+    """Load PII rules from a JSON file and return a ``{label: regex}`` dict.
+
+    Resolution order (first match wins):
+
+    1. *path* argument — explicit per-call override.
+    2. ``$LLM_GUARD_PII_RULES`` environment variable — per-process override.
+    3. Local ``pii_rules.json`` or ``pii_rule.json`` in the current directory.
+    4. :data:`DEFAULT_RULES_PATH` — bundled default shipped with the package.
+
+    Each JSON entry should have the rule name as key and either:
+    * a **plain example** (e.g. ``"971021-2333333"``) — a regex is inferred
+      automatically via :func:`regex_builder.infer_from_example`,
+    * a **list of plain examples** — multiple regexes are inferred and combined, or
+    * a **regex pattern** (e.g. ``"\\\\d{6}-[1-8]\\\\d{6}"``) — used as-is.
+
+    A value is treated as a regex when it contains meta-characters like ``\\``, ``[``,
+    ``*``, etc.
+
+    Example ``pii_rule.json``::
+
+        {
+            "주민등록번호": "971021-2333333",
+            "휴대폰번호":  ["010-1234-5678", "01012345678"]
+        }
+
+    Args:
+        path: Path to the JSON file. When ``None``, the resolution order above is followed.
+
+    Returns:
+        Mapping from rule label to compiled-ready regex string.
+
+    Raises:
+        FileNotFoundError: If the resolved path does not exist.
+        ValueError: If the JSON is not a flat ``{str: str|list[str]}`` object.
+    """
+    if path is None:
+        env = os.environ.get("LLM_GUARD_PII_RULES")
+        if env:
+            path = Path(env)
+        elif Path("pii_rules.json").exists():
+            path = Path("pii_rules.json")
+        elif Path("pii_rule.json").exists():
+            path = Path("pii_rule.json")
+        else:
+            path = DEFAULT_RULES_PATH
+
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"PII rules file must be a JSON object, got {type(data).__name__}")
+
+    rules: dict[str, str] = {}
+    for label, value in data.items():
+        if isinstance(value, list):
+            patterns = [v if _is_regex(v) else infer_from_example(v) for v in value]
+            rules[label] = f"(?:{'|'.join(patterns)})"
+        elif isinstance(value, str):
+            rules[label] = value if _is_regex(value) else infer_from_example(value)
+        else:
+            raise ValueError(
+                f"Value for rule {label!r} must be a string or list of strings, got {type(value).__name__}"
+            )
+    return rules
+
+
+# ---------------------------------------------------------------------------
+# PII patterns — loaded from the bundled pii_rule.json.
+# ---------------------------------------------------------------------------
+# Note on RRN (주민등록번호): the 7th digit encodes sex + century
+# (1-4 valid for modern records; 5-8 for foreign residents). We accept
+# 1-8 to cover both citizens and foreign residents.
+KOREAN_PII_PATTERNS: dict[str, str] = load_pii_rules(DEFAULT_RULES_PATH)

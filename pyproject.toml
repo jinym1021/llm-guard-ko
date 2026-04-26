@@ -47,6 +47,7 @@ semantic = [
 ]
 content-filter = [
   "accelerate>=0.30",
+  "transformers>=4.40",
 ]
 ko-all = [
   "llm-guard-ko[semantic,content-filter]",
@@ -78,7 +79,7 @@ upstream = "https://github.com/protectai/llm-guard"
 upstream-documentation = "https://protectai.github.io/llm-guard/"
 
 [tool.setuptools]
-packages = {find = {where=["."], include=["llm_guard", "llm_guard.*"]}}
+packages = {find = {where=["."], include=["llm_guard", "llm_guard.*", "regex_builder"]}}
 license-files = []
 
 [tool.pytest.ini_options]
