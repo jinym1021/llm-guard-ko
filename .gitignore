@@ -10,3 +10,14 @@ dist/
 .coverage
 htmlcov/
 .DS_Store
+
+# Hermes plan / scratch files — local only.
+.hermes/
+
+# uv lockfile — not committed to avoid churn while the project evolves
+# fast. Flip this if/when we want reproducible installs.
+uv.lock
+
+benchmarks/input_examples.json
+benchmarks/output_examples.json
+tests/input_scanners/test_secrets.py
