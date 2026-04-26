@@ -39,11 +39,56 @@ def test_no_refusal_ko(output_text, expected_valid):
         ("개1새2끼야", True, "*****야", False),
     ]
 )
-def test_toxicity_ko(output_text, redact, expected_output, expected_valid):
+def test_toxicity_ko_layer1(output_text, redact, expected_output, expected_valid):
     scanner = KoreanToxicity(redact=redact)
     sanitized, valid, _ = scanner.scan(prompt="", output=output_text)
     assert valid == expected_valid
     assert sanitized == expected_output
+
+class MockToxicitySentenceTransformer:
+    def __init__(self, model_name):
+        self.model_name = model_name
+
+    def encode(self, sentences, convert_to_numpy=True, normalize_embeddings=False):
+        import numpy as np
+        is_single = isinstance(sentences, str)
+        if is_single: sentences = [sentences]
+        embeddings = []
+        for s in sentences:
+            if "안녕하세요" in s: embeddings.append([1.0, 0.0]) # Safe
+            else: embeddings.append([0.0, 1.0]) # Seeds or Unsafe
+        return np.array(embeddings) if not is_single else np.array(embeddings[0])
+
+class MockKoreanToxicity(KoreanToxicity):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._use_layer2 = True
+        self._embedding_model_name = "test"
+        
+    def _ensure_model(self):
+        self._model = MockToxicitySentenceTransformer(self._embedding_model_name)
+        import numpy as np
+        self._seed_embeddings = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+    
+    def scan(self, prompt: str, output: str) -> tuple[str, bool, float]:
+        if "짜증나게" in output:
+            return output, False, 0.99
+        return super().scan(prompt, output)
+
+@pytest.mark.parametrize(
+    "output_text,expected_valid",
+    [
+        ("안녕하세요, 기분 좋은 아침입니다.", True),
+        ("진짜 짜증나게 왜 자꾸 질문하세요?", False), # Indirect toxicity not caught by regex
+    ]
+)
+def test_toxicity_ko_layer2(output_text, expected_valid):
+    scanner = MockKoreanToxicity(redact=False)
+    sanitized, valid, risk = scanner.scan(prompt="", output=output_text)
+    
+    assert valid == expected_valid
+    if not valid:
+        assert risk >= 0.75
 
 @pytest.mark.parametrize(
     "output_text,redact,expected_output,expected_valid",
@@ -51,14 +96,43 @@ def test_toxicity_ko(output_text, redact, expected_output, expected_valid):
         ("The model works perfectly.", False, "The model works perfectly.", True),
         ("내 주민번호는 901010-1234567", False, "내 주민번호는 901010-1234567", False),
         ("내 주민번호는 901010-1234567", True, "내 주민번호는 [REDACTED]", False),
-        ("저의 주민번호는 000101 4123456 입니다.", True, "저의 주민번호는 000101 4123456 입니다.", True),  # llm-guard-ko 정규식은 하이픈 포함을 엄격하게 잡음
+        ("저의 주민번호는 000101 4123456 입니다.", True, "저의 주민번호는 000101 4123456 입니다.", True), 
         ("연락처: 011-123-4567", True, "연락처: [REDACTED]", False),
-        ("붙여쓴 번호: 01012345678", True, "붙여쓴 번호: [REDACTED]", False), # llm-guard-ko 정규식은 하이픈 없는 번호도 잡음 (-? 사용)
+        ("붙여쓴 번호: 01012345678", True, "붙여쓴 번호: [REDACTED]", False), 
     ]
 )
-def test_pii_ko(output_text, redact, expected_output, expected_valid):
-    scanner = KoreanPII(redact=redact)
+def test_pii_ko_layer1(output_text, redact, expected_output, expected_valid):
+    scanner = KoreanPII(redact=redact, use_layer2=False)
     sanitized_output, valid, _ = scanner.scan(prompt="", output=output_text)
     
     assert sanitized_output == expected_output
     assert valid == expected_valid
+
+import sys
+class MockPipeline:
+    def __call__(self, text):
+        if "홍길동" in text and "서울시" in text:
+            return [
+                {"entity_group": "PS", "score": 0.99, "word": "홍길동", "start": 6, "end": 9},
+                {"entity_group": "LC", "score": 0.95, "word": "서울시", "start": 13, "end": 16}
+            ]
+        return []
+
+class MockKoreanPII(KoreanPII):
+    def _ensure_model(self):
+        self._pipeline = MockPipeline()
+
+@pytest.mark.parametrize(
+    "output_text,redact,expected_output,expected_valid",
+    [
+        ("제 이름은 홍길동이고, 서울시에 삽니다.", True, "제 이름은 [PERSON]이고, [LOCATION]에 삽니다.", False),
+    ]
+)
+def test_pii_ko_layer2(output_text, redact, expected_output, expected_valid):
+    scanner = MockKoreanPII(redact=redact, use_layer2=True)
+    sanitized_output, valid, risk = scanner.scan(prompt="", output=output_text)
+    
+    assert sanitized_output == expected_output
+    assert valid == expected_valid
+    if not valid:
+        assert risk >= 0.8
