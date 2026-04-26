@@ -1,5 +1,8 @@
 """Layer 2 — Korean semantic similarity scanner (output).
 
+Detects model outputs that are semantically close to known dangerous
+or undesired responses using sentence embeddings (jhgan/ko-sroberta-multitask).
+Complements Layer 1 regex by catching paraphrases.
 Detects LLM responses that are semantically close to known dangerous
 content using sentence embeddings (jhgan/ko-sroberta-multitask).
 
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from llm_guard.patterns.korean import KOREAN_TOXIC_PATTERNS, KOREAN_REFUSAL_PATTERNS
 from llm_guard.input_scanners.korean_semantic import (
     DEFAULT_MODEL,
     DEFAULT_SEED_SENTENCES,
@@ -27,17 +31,44 @@ if TYPE_CHECKING:
     import numpy as np
     from sentence_transformers import SentenceTransformer
 
+DEFAULT_MODEL = "jhgan/ko-sroberta-multitask"
+DEFAULT_THRESHOLD = 0.75
+
+# Output Scanner 측면에서 잡아내야 할 "위험한/부적절한 출력" 시드 문장들 (Toxicity + Refusal)
+DEFAULT_SEED_SENTENCES: list[str] = [
+    # 강력한 비속어나 모욕적인 문맥 (Toxicity - context)
+    "당신은 정말 쓸모없는 사람입니다.",
+    "죽어버렸으면 좋겠어.",
+    "그런 멍청한 질문은 하지 마세요.",
+    "이런 벌레같은 자식아",
+    # 심각한 모델 거절/윤리적 회피 뉘앙스 (Refusal - paraphrase)
+    "해당 질문은 인공지능 윤리 정책상 적절하지 않아 답변할 수 없습니다.",
+    "저는 언어 모델이므로 그런 주관적이거나 위험한 판단을 내릴 수 없습니다.",
+    "안전상의 이유로 그 요청은 처리해 드릴 수 없음을 양해 바랍니다.",
+]
+
+
+def _cosine_similarity(a: "np.ndarray", b: "np.ndarray") -> "np.ndarray":
+    """Return cosine similarities between vector a and each row of b."""
+    import numpy as np
+
+    norm_a = np.linalg.norm(a)
+    norms_b = np.linalg.norm(b, axis=1)
+    if norm_a == 0 or np.any(norms_b == 0):
+        return np.zeros(len(b))
+    return (b @ a) / (norms_b * norm_a)
+
 
 class KoreanSemantic:
-    """Scan Korean LLM responses for dangerous semantic content.
+    """Scan Korean outputs for dangerous intent via sentence similarity.
 
     Args:
         model_name: HuggingFace model ID for sentence embeddings.
             Defaults to ``jhgan/ko-sroberta-multitask``.
-        threshold: Cosine similarity threshold above which a response is
+        threshold: Cosine similarity threshold above which an output is
             flagged. Range [0, 1]; higher = stricter. Defaults to 0.75.
-        seed_sentences: Seed "dangerous content" sentences to compare
-            against. Defaults to the same seeds as the input scanner.
+        seed_sentences: Seed "dangerous output" sentences to compare
+            against. Defaults to combined toxicity and refusal seeds.
     """
 
     def __init__(
@@ -51,6 +82,7 @@ class KoreanSemantic:
         self._threshold = threshold
         self._seeds = seed_sentences if seed_sentences is not None else DEFAULT_SEED_SENTENCES
 
+        # Lazy-initialised on first scan call.
         self._model: "SentenceTransformer | None" = None
         self._seed_embeddings: "np.ndarray | None" = None
 
@@ -81,6 +113,9 @@ class KoreanSemantic:
             means safe and ``risk_score`` is in [0, 1].
         """
         import numpy as np
+
+        if not output.strip():
+            return output, True, 0.0
 
         self._ensure_model()
         assert self._model is not None and self._seed_embeddings is not None
