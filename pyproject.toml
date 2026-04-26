@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-guard-ko"
+description = "Korean-language extension pack for llm-guard: PII, prompt-injection, and semantic-layer scanners tuned for Korean text."
+authors = [
+  { name = "llm-guard-ko contributors" },
+]
+keywords = [
+  "llm", "security", "korean", "pii", "prompt injection",
+  "llm-guard", "nlp",
+]
+license = { text = "MIT" }
+readme = "README.md"
+version = "0.1.0"
+requires-python = ">=3.10,<3.13"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Natural Language :: Korean",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+]
+
+dependencies = [
+  "llm-guard>=0.3.16",
+]
+
+[project.optional-dependencies]
+semantic = [
+  "sentence-transformers>=2.7",
+]
+llm-judge = [
+  "openai>=1.0",
+]
+all = [
+  "llm-guard-ko[semantic]",
+  "llm-guard-ko[llm-judge]",
+]
+dev = [
+  "pytest>=8,<9",
+  "pytest-cov>=6",
+  "ruff>=0.11,<0.12",
+]
+
+[project.urls]
+homepage = "https://github.com/your-org/llm-guard-ko"
+repository = "https://github.com/your-org/llm-guard-ko"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["llm_guard_ko*"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:warnings -q"
+testpaths = ["tests"]
