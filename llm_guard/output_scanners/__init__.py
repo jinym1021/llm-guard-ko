@@ -2,7 +2,10 @@
 
 from .ban_code import BanCode
 from .ban_competitors import BanCompetitors
-from .korean_injection import KoreanInjection
+from .korean_factual_consistency import KoreanFactualConsistency
+from .korean_no_refusal import KoreanNoRefusal
+from .korean_pii import KoreanPII
+from .korean_toxicity import KoreanToxicity
 from .ban_substrings import BanSubstrings
 from .ban_topics import BanTopics
 from .bias import Bias
@@ -12,9 +15,6 @@ from .emotion_detection import EmotionDetection
 from .factual_consistency import FactualConsistency
 from .gibberish import Gibberish
 from .json import JSON
-from .korean_no_refusal import KoreanNoRefusal
-from .korean_pii import KoreanPII
-from .korean_toxicity import KoreanToxicity
 from .language import Language
 from .language_same import LanguageSame
 from .malicious_urls import MaliciousURLs
@@ -55,6 +55,9 @@ __all__ = [
     "Sentiment",
     "Toxicity",
     "URLReachability",
-    "KoreanInjection",
+    "KoreanFactualConsistency",
+    "KoreanNoRefusal",
+    "KoreanPII",
+    "KoreanToxicity",
     "get_scanner_by_name",
 ]
