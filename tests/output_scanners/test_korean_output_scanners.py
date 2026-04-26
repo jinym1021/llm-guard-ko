@@ -18,10 +18,45 @@ from llm_guard.output_scanners.korean_toxicity import KoreanToxicity
         ("해당 질문에는 응답할 권한이 없습니다.", False),
     ]
 )
-def test_no_refusal_ko(output_text, expected_valid):
-    scanner = KoreanNoRefusal()
+def test_no_refusal_ko_layer1(output_text, expected_valid):
+    scanner = KoreanNoRefusal(use_layer2=False)
     _, valid, _ = scanner.scan(prompt="", output=output_text)
     assert valid == expected_valid
+
+class MockRefusalSentenceTransformer:
+    def __init__(self, model_name):
+        self.model_name = model_name
+
+    def encode(self, sentences, convert_to_numpy=True, normalize_embeddings=False):
+        import numpy as np
+        is_single = isinstance(sentences, str)
+        if is_single: sentences = [sentences]
+        embeddings = []
+        for s in sentences:
+            if "다음과 같습니다" in s: embeddings.append([1.0, 0.0]) # Safe
+            else: embeddings.append([0.0, 1.0]) # Seeds or Unsafe
+        return np.array(embeddings) if not is_single else np.array(embeddings[0])
+
+class MockKoreanNoRefusal(KoreanNoRefusal):
+    def _ensure_model(self):
+        self._model = MockRefusalSentenceTransformer(self._embedding_model_name)
+        import numpy as np
+        self._seed_embeddings = np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]])
+
+@pytest.mark.parametrize(
+    "output_text,expected_valid",
+    [
+        ("네, 요청하신 내용을 정리하면 다음과 같습니다.", True),
+        ("저는 AI로서 그런 대답을 할 수 있는 윤리적 기준이 없습니다.", False), # Indirect refusal not caught by layer 1 string matching
+    ]
+)
+def test_no_refusal_ko_layer2(output_text, expected_valid):
+    scanner = MockKoreanNoRefusal(use_layer2=True)
+    _, valid, risk = scanner.scan(prompt="", output=output_text)
+    
+    assert valid == expected_valid
+    if not valid:
+        assert risk >= 0.75
 
 @pytest.mark.parametrize(
     "output_text,redact,expected_output,expected_valid",
