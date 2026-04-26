@@ -2,6 +2,7 @@ from typing import Dict, Optional
 
 from .ban_code import BanCode
 from .ban_competitors import BanCompetitors
+from .korean_content_filter import KoreanContentFilter
 from .korean_injection import KoreanInjection
 from .korean_pii import KoreanPII
 from .korean_semantic import KoreanSemantic
@@ -106,6 +107,9 @@ def get_scanner_by_name(scanner_name: str, scanner_config: Optional[Dict] = None
 
     if scanner_name == "URLReachability":
         return URLReachability(**scanner_config)
+
+    if scanner_name == "KoreanContentFilter":
+        return KoreanContentFilter(**scanner_config)
 
     if scanner_name == "KoreanInjection":
         return KoreanInjection(**scanner_config)
