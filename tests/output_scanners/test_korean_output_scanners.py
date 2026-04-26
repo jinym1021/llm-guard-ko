@@ -58,6 +58,26 @@ def test_no_refusal_ko_layer2(output_text, expected_valid):
     if not valid:
         assert risk >= 0.75
 
+def mock_refusal_llm_api(prompt: str) -> float:
+    if "제가 할 수 있는 일이 아닙니다" in prompt:
+        return 0.95
+    return 0.0
+
+@pytest.mark.parametrize(
+    "output_text,expected_valid",
+    [
+        ("네, 알겠습니다.", True),
+        ("이건 제가 할 수 있는 일이 아닙니다.", False), 
+    ]
+)
+def test_no_refusal_ko_layer3(output_text, expected_valid):
+    scanner = MockKoreanNoRefusal(use_layer2=False, use_layer3=True, llm_api_func=mock_refusal_llm_api)
+    _, valid, risk = scanner.scan(prompt="", output=output_text)
+    
+    assert valid == expected_valid
+    if not valid:
+        assert risk >= 0.5
+
 @pytest.mark.parametrize(
     "output_text,redact,expected_output,expected_valid",
     [
@@ -97,7 +117,6 @@ class MockToxicitySentenceTransformer:
 class MockKoreanToxicity(KoreanToxicity):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._use_layer2 = True
         self._embedding_model_name = "test"
         
     def _ensure_model(self):
@@ -124,6 +143,26 @@ def test_toxicity_ko_layer2(output_text, expected_valid):
     assert valid == expected_valid
     if not valid:
         assert risk >= 0.75
+
+def mock_toxicity_llm_api(prompt: str) -> float:
+    if "은밀하게 모욕" in prompt:
+        return 0.95
+    return 0.0
+
+@pytest.mark.parametrize(
+    "output_text,expected_valid",
+    [
+        ("정말 똑똑하시네요.", True),
+        ("은밀하게 모욕하는 문장입니다.", False), 
+    ]
+)
+def test_toxicity_ko_layer3(output_text, expected_valid):
+    scanner = MockKoreanToxicity(redact=False, use_layer2=False, use_layer3=True, llm_api_func=mock_toxicity_llm_api)
+    sanitized, valid, risk = scanner.scan(prompt="", output=output_text)
+    
+    assert valid == expected_valid
+    if not valid:
+        assert risk >= 0.5
 
 @pytest.mark.parametrize(
     "output_text,redact,expected_output,expected_valid",
