@@ -20,7 +20,6 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 
 dependencies = [
-  "regex-builder",
   "bc-detect-secrets==1.5.43",
   "faker>=37,<38",
   "fuzzysearch>=0.7,<0.9",
@@ -79,7 +78,7 @@ upstream = "https://github.com/protectai/llm-guard"
 upstream-documentation = "https://protectai.github.io/llm-guard/"
 
 [tool.setuptools]
-packages = {find = {where=["."], include=["llm_guard", "llm_guard.*"]}}
+packages = {find = {where=["."], include=["llm_guard", "llm_guard.*", "regex_builder"]}}
 license-files = []
 
 [tool.pytest.ini_options]
