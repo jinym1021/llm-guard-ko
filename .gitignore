@@ -10,3 +10,7 @@ dist/
 .coverage
 htmlcov/
 .DS_Store
+
+benchmarks/input_examples.json
+benchmarks/output_examples.json
+tests/input_scanners/test_secrets.py
