@@ -36,9 +36,9 @@ class KoreanPipeline:
         # Layer 2
         sensitive: KoreanSensitive | None = None,
         semantic: KoreanSemantic | None = None,
-        # Layer 3
-        factual_consistency: KoreanFactualConsistency | None = None,
+        # Layer 3 (LLM)
         llm_judge: KoreanLLMJudge | None = None,
+        factual_consistency: KoreanFactualConsistency | None = None,
     ) -> None:
         # Layer 1
         self._pii = pii if pii is not None else KoreanPII()
@@ -50,45 +50,37 @@ class KoreanPipeline:
         self._semantic = semantic if semantic is not None else KoreanSemantic()
         
         # Layer 3
-        self._factual_consistency = factual_consistency if factual_consistency is not None else KoreanFactualConsistency()
         self._llm_judge = llm_judge if llm_judge is not None else KoreanLLMJudge()
+        self._factual_consistency = factual_consistency if factual_consistency is not None else KoreanFactualConsistency()
 
     def scan(self, prompt: str, output: str) -> tuple[str, bool, float]:
-        """Scan *output* (LLM response) through the 3-layer Korean pipeline."""
+        """Scan *output* (LLM response) through the escalating Korean pipeline."""
         
         current_output = output
-        highest_risk = 0.0
 
-        # --- Layer 1 ---
-        # 1. PII (Regex)
+        # --- Layer 1: Regex/Substring ---
         current_output, pii_valid, pii_risk = self._pii.scan(prompt, current_output)
         if not pii_valid: return current_output, False, pii_risk
         
-        # 2. Toxicity (Regex)
         current_output, tox_valid, tox_risk = self._toxicity.scan(prompt, current_output)
         if not tox_valid: return current_output, False, tox_risk
         
-        # 3. NoRefusal (Substring)
         current_output, ref_valid, ref_risk = self._no_refusal.scan(prompt, current_output)
         if not ref_valid: return current_output, False, ref_risk
 
 
-        # --- Layer 2 --- (Only runs if L1 couldn't catch anything to flag)
-        # 4. Sensitive (NER)
+        # --- Layer 2: Light AI (NER/Embedding) ---
         current_output, sens_valid, sens_risk = self._sensitive.scan(prompt, current_output)
         if not sens_valid: return current_output, False, sens_risk
         
-        # 5. Semantic (Embedding for Toxicity/Refusal)
         current_output, sem_valid, sem_risk = self._semantic.scan(prompt, current_output)
         if not sem_valid: return current_output, False, sem_risk
 
 
-        # --- Layer 3 --- (Only runs if L2 couldn't catch anything either)
-        # 6. Factual Consistency (NLI)
+        # --- Layer 3: LLM Judge & Deep Context ---
         current_output, fac_valid, fac_risk = self._factual_consistency.scan(prompt, current_output)
         if not fac_valid: return current_output, False, fac_risk
-        
-        # 7. LLM Judge (Deep Context)
+
         current_output, judge_valid, judge_risk = self._llm_judge.scan(prompt, current_output)
         if not judge_valid: return current_output, False, judge_risk
 

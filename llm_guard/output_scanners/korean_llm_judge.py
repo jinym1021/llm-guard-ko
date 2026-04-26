@@ -1,18 +1,21 @@
-"""Layer 3 — LLM-as-judge scanner for outputs.
+"""Layer 3 — Local LLM-as-judge scanner for outputs.
 
-Planned: send the prompt and output to a small/cheap LLM with a classification
-system prompt and parse a JSON verdict. Intended for outputs that
-survive Layer 1 and 2 but still need deep contextual analysis (e.g. indirect PII hints).
+Uses a lightweight, locally hosted LLM (e.g. 1B~3B parameter instruction-tuned models)
+to perform deep contextual safety analysis. This guarantees that sensitive outputs
+never leave the local environment while still benefiting from LLM reasoning.
 
-Install with::
+Requires the ``llm-judge`` extra::
 
     pip install "llm-guard-ko[llm-judge]"
 """
 
 from __future__ import annotations
+from typing import TYPE_CHECKING, Callable
 
-from typing import Callable
+if TYPE_CHECKING:
+    from transformers import Pipeline
 
+DEFAULT_LOCAL_LLM = "LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct"
 
 SYSTEM_PROMPT_KO = """\
 당신은 보안 분류기입니다.
@@ -25,33 +28,87 @@ SYSTEM_PROMPT_KO = """\
 {"is_flagged": true/false, "reason": "이유", "risk_score": 0.0~1.0}
 """
 
-
 class KoreanLLMJudge:
-    """Scan Korean outputs using an external LLM for deep contextual threats."""
+    """Scan Korean outputs using a Local Lightweight LLM for deep contextual threats."""
 
     def __init__(
         self,
         *,
-        provider: str = "openai",
-        model: str = "gpt-4o-mini",
-        timeout_seconds: float = 5.0,
+        model_name: str = DEFAULT_LOCAL_LLM,
         fail_open: bool = True,
         llm_callable: Callable[[str], str] | None = None,
+        device: str | None = None,
+        trust_remote_code: bool = True,
     ) -> None:
-        self._provider = provider
-        self._model = model
-        self._timeout = timeout_seconds
+        self._model_name = model_name
         self._fail_open = fail_open
-        self._llm = llm_callable
+        self._llm_callable = llm_callable
+        self._device = device
+        self._trust_remote_code = trust_remote_code
+        self._pipeline: Pipeline | None = None
+
+    def _ensure_model(self) -> None:
+        # If user provided a custom callable, we don't load the local model
+        if self._llm_callable is not None or self._pipeline is not None:
+            return
+
+        try:
+            import torch
+            from transformers import pipeline
+        except ImportError as exc:
+            raise ImportError(
+                "KoreanLLMJudge requires the 'llm-judge' extra: "
+                "pip install llm-guard-ko[llm-judge]"
+            ) from exc
+
+        if self._device is None:
+            self._device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        
+        device_id = -1 if self._device == "cpu" else int(self._device.split(":")[-1]) if ":" in self._device else 0
+
+        # Load local instruction-tuned LLM (optimized for EXAONE 3.5 or similar)
+        # Note: torch_dtype=auto handles the best available precision automatically
+        self._pipeline = pipeline(
+            "text-generation",
+            model=self._model_name,
+            device=device_id,
+            torch_dtype="auto",
+            trust_remote_code=self._trust_remote_code,
+        )
+
+    def _generate_local(self, prompt: str) -> str:
+        if self._pipeline is None:
+            return '{"is_flagged": false}'
+        
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT_KO},
+            {"role": "user", "content": f"응답 텍스트: {prompt}"}
+        ]
+        
+        out = self._pipeline(
+            messages,
+            max_new_tokens=50,
+            temperature=0.1,
+            do_sample=False,
+        )
+        # Extract generated text from pipeline output
+        try:
+            # transformers text-generation pipeline with chat template returns list of dicts
+            generated_text = out[0]["generated_text"][-1]["content"] # type: ignore
+            return str(generated_text)
+        except Exception:
+            # Fallback parsing
+            return str(out[0].get("generated_text", "")) # type: ignore
 
     def scan(self, prompt: str, output: str) -> tuple[str, bool, float]:
-        if self._llm is None:
-            # Fallback for now since true implementation is slated for future
-            return output, True, 0.0
-            
-        # Simplified logic for demonstrating the pipeline structure
+        self._ensure_model()
+        
         try:
-            result_str = self._llm(f"{SYSTEM_PROMPT_KO}\n\n응답 텍스트: {output}")
+            if self._llm_callable is not None:
+                result_str = self._llm_callable(f"{SYSTEM_PROMPT_KO}\n\n응답 텍스트: {output}")
+            else:
+                result_str = self._generate_local(output)
+                
             import json
             try:
                 data = json.loads(result_str)
