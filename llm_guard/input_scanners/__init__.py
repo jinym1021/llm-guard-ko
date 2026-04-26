@@ -11,6 +11,7 @@ from .gibberish import Gibberish
 from .invisible_text import InvisibleText
 from .korean_content_filter import KoreanContentFilter
 from .korean_injection import KoreanInjection
+from .korean_pipeline import KoreanPipeline
 from .korean_pii import KoreanPII
 from .korean_semantic import KoreanSemantic
 from .language import Language
@@ -34,6 +35,7 @@ __all__ = [
     "InvisibleText",
     "KoreanContentFilter",
     "KoreanInjection",
+    "KoreanPipeline",
     "KoreanPII",
     "KoreanSemantic",
     "Language",
