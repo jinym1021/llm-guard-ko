@@ -1,14 +1,14 @@
-"""
-Stub missing required dependencies for environments where heavy packages
-(torch, presidio, spacy, etc.) are not installed.
+"""Shared pytest fixtures.
 
-Strategy: pre-populate sys.modules with lightweight stubs for the scanner
-sub-packages so llm_guard/__init__.py can load without the heavy deps.
-The instrumentation module imports llm_guard.evaluate, which we stub here.
+Strategy: try to import the real ``llm_guard`` package first. Only if that
+fails (e.g. heavy deps like ``torch``/``presidio`` aren't installed) do we
+fall back to lightweight stubs so the legacy ``test_evaluate.py`` and the
+instrumentation tests can still run. Scanner-specific tests need the real
+modules to load, so we must not pre-empt them.
 """
+
 import sys
 import types
-from unittest.mock import MagicMock
 
 
 def _scan_prompt(scanners, prompt, fail_fast=False):
@@ -35,14 +35,16 @@ def _scan_output(scanners, prompt, output, fail_fast=False):
     return sanitized, valid, score
 
 
-def _install_stubs():
-    # Build a real-looking llm_guard.evaluate module without importing scanners
+def _install_stubs() -> None:
+    """Stub the scanner packages with empty namespaces.
+
+    Only used when real scanner imports are unavailable.
+    """
     evaluate = types.ModuleType("llm_guard.evaluate")
     evaluate.scan_prompt = _scan_prompt
     evaluate.scan_output = _scan_output
     sys.modules["llm_guard.evaluate"] = evaluate
 
-    # Stub the scanner packages so their __init__.py never runs
     for pkg in (
         "llm_guard.input_scanners",
         "llm_guard.output_scanners",
@@ -54,7 +56,6 @@ def _install_stubs():
             m.__path__ = []
             sys.modules[pkg] = m
 
-    # Provide Scanner base classes (protocol-style) so imports succeed
     class _Scanner:
         pass
 
@@ -64,4 +65,15 @@ def _install_stubs():
     sys.modules["llm_guard.output_scanners.base"] = types.SimpleNamespace(Scanner=_Scanner)
 
 
-_install_stubs()
+def _try_real_imports() -> bool:
+    """Return True iff both scanner packages import cleanly with real submodules."""
+    try:
+        import llm_guard.input_scanners  # noqa: F401
+        import llm_guard.output_scanners  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+if not _try_real_imports():
+    _install_stubs()

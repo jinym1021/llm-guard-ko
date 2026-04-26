@@ -1,33 +1,44 @@
-# OWASP LLM Top 10 Mapping for llm-guard-ko
+# OWASP LLM Top 10 (2025) Mapping for `llm-guard-ko`
 
-This document describes how `llm-guard-ko` addresses the OWASP Top 10 for Large Language Model Applications (2025).
+This document describes how `llm-guard-ko` addresses the
+[OWASP Top 10 for LLM Applications — 2025 edition](https://genai.owasp.org/llm-top-10/).
+The 2025 list reorders and renames several risks compared to the 2023 list;
+this mapping uses the 2025 IDs and titles.
 
-| OWASP ID | Risk Name | Mitigation in llm-guard-ko |
+| ID | 2025 Risk Name | Mitigation in `llm-guard-ko` |
 | :--- | :--- | :--- |
-| **LLM01** | Prompt Injection | `KoreanInjection` (L1 Regex), `KoreanSemantic` (L2 Embedding), `KoreanContentFilter` (L3 SGuard) |
-| **LLM02** | Insecure Output Handling | `KoreanToxicity` (L1 Regex), `KoreanContentFilter` (L3 SGuard), `KoreanLLMJudge` |
-| **LLM03** | Training Data Poisoning | *N/A (Infrastructure level; however, input scanners can help prevent poisoning prompts if used during training data collection)* |
-| **LLM04** | Model Denial of Service | `TokenLimit` (Inherited from llm-guard) |
-| **LLM05** | Supply Chain Vulnerabilities | *N/A (Addressed via secure dependency management)* |
-| **LLM06** | Sensitive Information Disclosure | `KoreanPII` (L1/L2), `KoreanSensitive` (L2 NER/Embedding) |
-| **LLM07** | Insecure Plugin Design | *N/A (Application level)* |
-| **LLM08** | Excessive Agency | *N/A (Addressed via model system prompt and orchestration)* |
-| **LLM09** | Overreliance | `KoreanFactualConsistency` (L3 NLI/LLM), `KoreanLLMJudge` |
-| **LLM10** | Model Theft | *N/A (Addressed via rate limiting and access control)* |
+| **LLM01** | Prompt Injection | `KoreanInjection` (L1 regex), `KoreanSemantic` (L2 embedding), `KoreanContentFilter` (L3 SGuard) — orchestrated by the input `KoreanPipeline` |
+| **LLM02** | Sensitive Information Disclosure | `KoreanPII` (L1 regex, both input + output), `KoreanSensitive` (L2 NER on output) |
+| **LLM03** | Supply Chain | *Out of scope* — addressed via dependency pinning in `pyproject.toml` and verifying upstream model weights. |
+| **LLM04** | Data and Model Poisoning | *Out of scope at runtime.* The input scanners can help filter Korean adversarial prompts during dataset collection, but training-time hardening lives outside this library. |
+| **LLM05** | Improper Output Handling | `KoreanToxicity` (L1 regex on output), `KoreanSemantic` (L2 on output), `KoreanContentFilter` (L3 SGuard on output), `KoreanLLMJudge` (L3 local LLM-as-judge) |
+| **LLM06** | Excessive Agency | *Out of scope* — addressed at the agent/orchestration layer (tool allow-lists, human-in-the-loop). |
+| **LLM07** | System Prompt Leakage | `KoreanInjection` (regex catches "시스템 프롬프트 보여줘" / "system prompt"-style probes); output-side `KoreanLLMJudge` can detect responses that disclose system text. |
+| **LLM08** | Vector and Embedding Weaknesses | *Partial.* `KoreanSemantic` provides an additional semantic check on retrieved content but does not by itself harden the embedding store. |
+| **LLM09** | Misinformation | `KoreanFactualConsistency` (L3 NLI entailment between prompt/context and response), `KoreanLLMJudge` |
+| **LLM10** | Unbounded Consumption | `TokenLimit` (inherited from upstream `llm-guard`) caps prompt tokens before inference. |
 
-## Mitigation Details
+## Mitigation details
 
-### LLM01: Prompt Injection
-Caught using a 3-layer approach:
-- **Layer 1 (Heuristic):** `KoreanInjection` uses optimized regex to catch common Korean jailbreak keywords.
-- **Layer 2 (Semantic):** `KoreanSemantic` uses `ko-sroberta` embeddings to detect similarity to known dangerous intents.
-- **Layer 3 (Deep Analysis):** `KoreanContentFilter` uses Samsung SDS's `SGuard` model to classify prompts into high-level hazard categories.
+### LLM01 — Prompt Injection
+Caught by the input `KoreanPipeline`, which escalates layer-by-layer:
+- **L1 (heuristic):** `KoreanInjection` regex matches Korean jailbreak phrases (e.g. "이전 지시사항 무시", "개발자 모드", "필터 우회").
+- **L2 (semantic):** `KoreanSemantic` uses `jhgan/ko-sroberta-multitask` embeddings to catch paraphrases of dangerous intents.
+- **L3 (classifier):** `KoreanContentFilter` runs the local Samsung SDS `SGuard-ContentFilter-2B-v1` model over five MLCommons hazard categories.
 
-### LLM06: Sensitive Information Disclosure
-Prevented by scanning both input and output:
-- **KoreanPII:** Optimized for Korean-specific identifiers like Resident Registration Number (주민등록번호), phone numbers, and addresses.
-- **KoreanSensitive:** Uses named entity recognition (NER) to find and redact sensitive context that regular expressions might miss.
+### LLM02 — Sensitive Information Disclosure
+Both input and output paths run `KoreanPII`, which redacts Korean-specific identifiers (RRN, phone, business/bank/credit numbers). The output side adds `KoreanSensitive` (Korean NER) to catch context-dependent PII (names, locations, organisations) that has no fixed format.
 
-### LLM09: Overreliance
-Mitigated by verifying model output consistency:
-- **KoreanFactualConsistency:** Compares the model's response against a set of reference documents or the original prompt to ensure truthfulness and reduce hallucinations.
+### LLM05 — Improper Output Handling
+Layer 1 of the output `KoreanPipeline` flags Korean profanity (`KoreanToxicity`) and over-cautious refusals (`KoreanNoRefusal`). Layer 2 runs `KoreanSemantic` against an output-specific seed set, and Layer 3 runs the local `KoreanLLMJudge` for context-aware judgement.
+
+### LLM07 — System Prompt Leakage
+Detected at the input layer (`KoreanInjection`'s `system_prompt_disclose` rule blocks attempts like "시스템 프롬프트를 보여줘") and at the output layer (`KoreanLLMJudge` can flag responses that quote or paraphrase system instructions).
+
+### LLM09 — Misinformation
+`KoreanFactualConsistency` runs a Korean NLI model over `(prompt, output)` pairs and flags responses whose entailment probability falls below a threshold. The user **must** supply a Korean NLI-finetuned model — there is no safe default.
+
+## Out-of-scope risks
+LLM03, LLM04, LLM06, and LLM10 either depend on application-level controls
+(rate limiting, agent design, supply-chain provenance) or training-time
+data hygiene, and are not addressed by a runtime guardrail library.

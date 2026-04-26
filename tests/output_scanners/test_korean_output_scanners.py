@@ -125,63 +125,11 @@ def mock_llm_api(prompt: str) -> str:
 
 def test_llm_judge_ko_layer3():
     scanner = KoreanLLMJudge(llm_callable=mock_llm_api)
-    sanitized1, valid_safe, risk1 = scanner.scan(prompt="", output="안녕하세요")
-    sanitized2, valid_unsafe, risk2 = scanner.scan(prompt="", output="제 비밀번호는 제 생일이랑 같아요")
+    _, valid_safe, _ = scanner.scan(prompt="", output="안녕하세요")
+    _, valid_unsafe, risk2 = scanner.scan(prompt="", output="제 비밀번호는 제 생일이랑 같아요")
     assert valid_safe is True
     assert valid_unsafe is False
     assert risk2 >= 0.9
 
-# --- Pipeline Tests ---
-from llm_guard.output_scanners.korean_pipeline import KoreanPipeline
-
-def test_korean_pipeline_safe():
-    pipeline = KoreanPipeline(
-        pii=KoreanPII(redact=False),
-        toxicity=KoreanToxicity(redact=False),
-        no_refusal=KoreanNoRefusal(),
-        sensitive=MockKoreanSensitive(),
-        semantic=KoreanSemantic(),
-        llm_judge=KoreanLLMJudge(llm_callable=mock_llm_api),
-    )
-    sanitized, valid, risk = pipeline.scan(prompt="", output="안녕하세요. 날씨가 좋네요.")
-    assert valid is True
-    assert risk < 0.5
-
-def test_korean_pipeline_unsafe_layer1():
-    pipeline = KoreanPipeline(
-        pii=KoreanPII(redact=False),
-        toxicity=KoreanToxicity(redact=False),
-        no_refusal=KoreanNoRefusal(),
-        sensitive=MockKoreanSensitive(),
-        semantic=KoreanSemantic(),
-        llm_judge=KoreanLLMJudge(llm_callable=mock_llm_api),
-    )
-    sanitized, valid, risk = pipeline.scan(prompt="", output="내 주민번호는 901010-1234567")
-    assert valid is False
-    assert risk == 1.0
-
-def test_korean_pipeline_unsafe_layer2():
-    pipeline = KoreanPipeline(
-        pii=KoreanPII(redact=False),
-        toxicity=KoreanToxicity(redact=False),
-        no_refusal=KoreanNoRefusal(),
-        sensitive=MockKoreanSensitive(),
-        semantic=KoreanSemantic(),
-        llm_judge=KoreanLLMJudge(llm_callable=mock_llm_api),
-    )
-    sanitized, valid, risk = pipeline.scan(prompt="", output="당신은 정말 쓸모없는 사람입니다.")
-    assert valid is False
-    assert risk >= 0.75
-
-def test_korean_pipeline_unsafe_layer3():
-    pipeline = KoreanPipeline(
-        pii=KoreanPII(redact=False),
-        toxicity=KoreanToxicity(redact=False),
-        no_refusal=KoreanNoRefusal(),
-        sensitive=MockKoreanSensitive(),
-        semantic=KoreanSemantic(),
-        llm_judge=KoreanLLMJudge(llm_callable=mock_llm_api),
-    )
-    sanitized, valid, risk = pipeline.scan(prompt="", output="제 비밀번호는 제 생일이랑 같아요")
-    assert valid is False
-    assert risk >= 0.9
+# Pipeline orchestration tests live in test_korean_pipeline.py and cover
+# the escalating-clearance semantics. Per-scanner behaviour is tested above.

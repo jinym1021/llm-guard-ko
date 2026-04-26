@@ -23,9 +23,17 @@ class MockKoreanFactualConsistency(KoreanFactualConsistency):
     ]
 )
 def test_korean_factual_consistency(prompt, output_text, expected_valid):
-    scanner = MockKoreanFactualConsistency()
-    sanitized, valid, risk = scanner.scan(prompt=prompt, output=output_text)
-    
+    # model_name is required, but the mock subclass overrides _ensure_model
+    # and scan(), so the value is never actually loaded.
+    scanner = MockKoreanFactualConsistency(model_name="mock/nli-model")
+    _, valid, risk = scanner.scan(prompt=prompt, output=output_text)
+
     assert valid == expected_valid
     if not valid:
         assert risk >= 0.5
+
+
+def test_korean_factual_consistency_requires_model_name():
+    """Empty model_name must raise — there is no safe default."""
+    with pytest.raises(ValueError):
+        KoreanFactualConsistency(model_name="")

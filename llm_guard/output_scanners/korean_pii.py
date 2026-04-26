@@ -3,6 +3,10 @@
 Matches Korean-specific PII patterns (RRN, phone, business/bank/credit
 numbers) and returns llm-guard's Scanner protocol 3-tuple:
     (sanitized_text, is_valid, risk_score)
+
+The default pattern set is the bundled :data:`KOREAN_PII_PATTERNS`, the
+same default the input scanner uses — so a redaction guarantee on the
+input side automatically holds on the output side.
 """
 
 from __future__ import annotations
@@ -12,6 +16,7 @@ from pathlib import Path
 from typing import Pattern
 
 from llm_guard.input_scanners.korean_patterns import load_pii_rules
+from llm_guard.patterns.korean import KOREAN_PII_PATTERNS
 
 REDACTION_MARKER = "[REDACTED]"
 
@@ -24,11 +29,11 @@ class KoreanPII:
             the returned text. If False, return the original output but
             still flag it as invalid.
         patterns: Optional override for the pattern dict. When provided,
-            takes precedence over *rule_file* and the default rule resolution.
-        rule_file: Path to a ``pii_rule.json`` file. When provided, rules are
-            loaded from the file instead of the default resolution order
-            (``$LLM_GUARD_PII_RULES`` env var → bundled ``pii_rule.json``).
-            See :func:`~llm_guard.input_scanners.korean_patterns.load_pii_rules`.
+            takes precedence over *rule_file* and the bundled defaults.
+        rule_file: Path to a ``pii_rule.json`` file. When provided, rules
+            are loaded via
+            :func:`~llm_guard.input_scanners.korean_patterns.load_pii_rules`
+            instead of using the bundled defaults.
     """
 
     def __init__(
@@ -44,7 +49,7 @@ class KoreanPII:
         elif patterns is not None:
             source = patterns
         else:
-            source = load_pii_rules()
+            source = KOREAN_PII_PATTERNS
         self._compiled: list[tuple[str, Pattern[str]]] = [
             (label, re.compile(pattern)) for label, pattern in source.items()
         ]

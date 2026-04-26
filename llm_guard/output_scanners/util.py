@@ -2,8 +2,6 @@ from typing import Dict, Optional
 
 from .ban_code import BanCode
 from .ban_competitors import BanCompetitors
-from .korean_pii import KoreanPII
-from .korean_semantic import KoreanSemantic
 from .ban_substrings import BanSubstrings
 from .ban_topics import BanTopics
 from .base import Scanner
@@ -13,6 +11,15 @@ from .deanonymize import Deanonymize
 from .factual_consistency import FactualConsistency
 from .gibberish import Gibberish
 from .json import JSON
+from .korean_content_filter import KoreanContentFilter
+from .korean_factual_consistency import KoreanFactualConsistency
+from .korean_llm_judge import KoreanLLMJudge
+from .korean_no_refusal import KoreanNoRefusal
+from .korean_pii import KoreanPII
+from .korean_pipeline import KoreanPipeline
+from .korean_semantic import KoreanSemantic
+from .korean_sensitive import KoreanSensitive
+from .korean_toxicity import KoreanToxicity
 from .language import Language
 from .language_same import LanguageSame
 from .malicious_urls import MaliciousURLs
@@ -26,99 +33,54 @@ from .toxicity import Toxicity
 from .url_reachabitlity import URLReachability
 
 
+_SCANNER_REGISTRY = {
+    "BanCode": BanCode,
+    "BanCompetitors": BanCompetitors,
+    "BanSubstrings": BanSubstrings,
+    "BanTopics": BanTopics,
+    "Bias": Bias,
+    "Code": Code,
+    "Deanonymize": Deanonymize,
+    "FactualConsistency": FactualConsistency,
+    "Gibberish": Gibberish,
+    "JSON": JSON,
+    "KoreanContentFilter": KoreanContentFilter,
+    "KoreanFactualConsistency": KoreanFactualConsistency,
+    "KoreanLLMJudge": KoreanLLMJudge,
+    "KoreanNoRefusal": KoreanNoRefusal,
+    "KoreanPII": KoreanPII,
+    "KoreanPipeline": KoreanPipeline,
+    "KoreanSemantic": KoreanSemantic,
+    "KoreanSensitive": KoreanSensitive,
+    "KoreanToxicity": KoreanToxicity,
+    "Language": Language,
+    "LanguageSame": LanguageSame,
+    "MaliciousURLs": MaliciousURLs,
+    "NoRefusal": NoRefusal,
+    "NoRefusalLight": NoRefusalLight,
+    "ReadingTime": ReadingTime,
+    "Regex": Regex,
+    "Relevance": Relevance,
+    "Sensitive": Sensitive,
+    "Sentiment": Sentiment,
+    "Toxicity": Toxicity,
+    "URLReachability": URLReachability,
+}
+
+
 def get_scanner_by_name(scanner_name: str, scanner_config: Optional[Dict] = None) -> Scanner:
-    """
-    Get scanner by name.
+    """Instantiate an output scanner by name.
 
     Parameters:
-        scanner_name (str): Name of scanner.
-        scanner_config (Optional[Dict], optional): Scanner configuration. Defaults to None.
+        scanner_name: Name of the scanner class (e.g. ``"KoreanPipeline"``).
+        scanner_config: Keyword arguments forwarded to the scanner constructor.
 
     Raises:
-        ValueError: If scanner name is unknown.
+        ValueError: If *scanner_name* is not a registered scanner.
     """
-    if scanner_config is None:
-        scanner_config = {}
-
-    if scanner_name == "BanCode":
-        return BanCode(**scanner_config)
-
-    if scanner_name == "BanCompetitors":
-        return BanCompetitors(**scanner_config)
-
-    if scanner_name == "BanSubstrings":
-        return BanSubstrings(**scanner_config)
-
-    if scanner_name == "BanTopics":
-        return BanTopics(**scanner_config)
-
-    if scanner_name == "Bias":
-        return Bias(**scanner_config)
-
-    if scanner_name == "Deanonymize":
-        return Deanonymize(**scanner_config)
-
-    if scanner_name == "FactualConsistency":
-        return FactualConsistency(**scanner_config)
-
-    if scanner_name == "Gibberish":
-        return Gibberish(**scanner_config)
-
-    if scanner_name == "JSON":
-        return JSON(**scanner_config)
-
-    if scanner_name == "Language":
-        return Language(**scanner_config)
-
-    if scanner_name == "LanguageSame":
-        return LanguageSame(**scanner_config)
-
-    if scanner_name == "Code":
-        return Code(**scanner_config)
-
-    if scanner_name == "MaliciousURLs":
-        return MaliciousURLs(**scanner_config)
-
-    if scanner_name == "NoRefusal":
-        return NoRefusal(**scanner_config)
-
-    if scanner_name == "NoRefusalLight":
-        return NoRefusalLight()
-
-    if scanner_name == "ReadingTime":
-        return ReadingTime(**scanner_config)
-
-    if scanner_name == "Regex":
-        return Regex(**scanner_config)
-
-    if scanner_name == "Relevance":
-        return Relevance(**scanner_config)
-
-    if scanner_name == "Sensitive":
-        return Sensitive(**scanner_config)
-
-    if scanner_name == "Sentiment":
-        return Sentiment(**scanner_config)
-
-    if scanner_name == "Toxicity":
-        return Toxicity(**scanner_config)
-
-    if scanner_name == "URLReachability":
-        return URLReachability(**scanner_config)
-
-    if scanner_name == "KoreanContentFilter":
-        return KoreanContentFilter(**scanner_config)
-
-    if scanner_name == "KoreanPipeline":
-        return KoreanPipeline(**scanner_config)
-
-    if scanner_name == "KoreanInjection":
-        return KoreanInjection(**scanner_config)
-
-    if scanner_name == "KoreanPII":
-        return KoreanPII(**scanner_config)
-
-    if scanner_name == "KoreanSemantic":
-        return KoreanSemantic(**scanner_config)
-
-    raise ValueError(f"Unknown scanner name: {scanner_name}!")
+    config = scanner_config or {}
+    try:
+        cls = _SCANNER_REGISTRY[scanner_name]
+    except KeyError as exc:
+        raise ValueError(f"Unknown scanner name: {scanner_name}!") from exc
+    return cls(**config)
