@@ -10,23 +10,9 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# PII patterns — match on Korean-specific identifiers.
-# ---------------------------------------------------------------------------
-# Note on RRN (주민등록번호): the 7th digit encodes sex + century
-# (1-4 valid for modern records; 5-8 for foreign residents). We accept
-# 1-8 to cover both citizens and foreign residents.
-KOREAN_PII_PATTERNS: dict[str, str] = {
-    "resident_registration_number": r"\d{6}-[1-8]\d{6}",
-    "phone_number_mobile": r"01[016789]-?\d{3,4}-?\d{4}",
-    "phone_number_landline": r"0(?:2|[3-6][1-5])-?\d{3,4}-?\d{4}",
-    "business_registration_number": r"\d{3}-\d{2}-\d{5}",
-    "bank_account_number": r"\d{3,6}-\d{2,6}-\d{4,7}",
-    "credit_card_number": r"\d{4}-\d{4}-\d{4}-\d{4}",
-}
+from regex_builder import infer_from_example
 
 # ---------------------------------------------------------------------------
 # Prompt-injection / jailbreak phrases — match case-insensitively.
@@ -61,53 +47,6 @@ def _is_regex(value: str) -> bool:
     return any(c in _REGEX_INDICATOR_CHARS for c in value)
 
 
-def _infer_regex_from_example(example: str) -> str:
-    """Build a regex pattern from a concrete example string.
-
-    Consecutive characters of the same class are collapsed:
-      digits       → ``\\d{n}``
-      Korean chars → ``[가-힣]{n}``
-      Latin letters → ``[A-Za-z]{n}``
-      everything else → ``re.escape(char)`` (literal)
-
-    Separators (hyphens and spaces) are made optional in the resulting pattern.
-
-    Example::
-
-        _infer_regex_from_example("971021-2333333") == r"\\d{6}-?\\d{7}"
-        _infer_regex_from_example("010-1234-5678")  == r"\\d{3}-?\\d{4}-?\\d{4}"
-    """
-    parts: list[str] = []
-    i = 0
-    while i < len(example):
-        c = example[i]
-        if c.isdigit():
-            j = i
-            while j < len(example) and example[j].isdigit():
-                j += 1
-            parts.append(rf"\d{{{j - i}}}")
-            i = j
-        elif "가" <= c <= "힣":  # Hangul syllable block
-            j = i
-            while j < len(example) and "가" <= example[j] <= "힣":
-                j += 1
-            parts.append(f"[가-힣]{{{j - i}}}")
-            i = j
-        elif c.isalpha():
-            j = i
-            while j < len(example) and example[j].isalpha() and not ("가" <= example[j] <= "힣"):
-                j += 1
-            parts.append(f"[A-Za-z]{{{j - i}}}")
-            i = j
-        elif c in ("-", " "):
-            parts.append(rf"{re.escape(c)}?")
-            i += 1
-        else:
-            parts.append(re.escape(c))
-            i += 1
-    return "".join(parts)
-
-
 def load_pii_rules(path: str | Path | None = None) -> dict[str, str]:
     """Load PII rules from a JSON file and return a ``{label: regex}`` dict.
 
@@ -120,7 +59,7 @@ def load_pii_rules(path: str | Path | None = None) -> dict[str, str]:
 
     Each JSON entry should have the rule name as key and either:
     * a **plain example** (e.g. ``"971021-2333333"``) — a regex is inferred
-      automatically via :func:`_infer_regex_from_example`,
+      automatically via :func:`regex_builder.infer_from_example`,
     * a **list of plain examples** — multiple regexes are inferred and combined, or
     * a **regex pattern** (e.g. ``"\\\\d{6}-[1-8]\\\\d{6}"``) — used as-is.
 
@@ -162,12 +101,21 @@ def load_pii_rules(path: str | Path | None = None) -> dict[str, str]:
     rules: dict[str, str] = {}
     for label, value in data.items():
         if isinstance(value, list):
-            patterns = [v if _is_regex(v) else _infer_regex_from_example(v) for v in value]
+            patterns = [v if _is_regex(v) else infer_from_example(v) for v in value]
             rules[label] = f"(?:{'|'.join(patterns)})"
         elif isinstance(value, str):
-            rules[label] = value if _is_regex(value) else _infer_regex_from_example(value)
+            rules[label] = value if _is_regex(value) else infer_from_example(value)
         else:
             raise ValueError(
                 f"Value for rule {label!r} must be a string or list of strings, got {type(value).__name__}"
             )
     return rules
+
+
+# ---------------------------------------------------------------------------
+# PII patterns — loaded from the bundled pii_rule.json.
+# ---------------------------------------------------------------------------
+# Note on RRN (주민등록번호): the 7th digit encodes sex + century
+# (1-4 valid for modern records; 5-8 for foreign residents). We accept
+# 1-8 to cover both citizens and foreign residents.
+KOREAN_PII_PATTERNS: dict[str, str] = load_pii_rules(DEFAULT_RULES_PATH)

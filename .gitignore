@@ -21,3 +21,7 @@ uv.lock
 benchmarks/input_examples.json
 benchmarks/output_examples.json
 tests/input_scanners/test_secrets.py
+
+# User-supplied PII rule files — local config, not committed.
+/pii_rule.json
+/pii_rules.json
