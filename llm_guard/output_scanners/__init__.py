@@ -4,6 +4,7 @@ from .ban_code import BanCode
 from .ban_competitors import BanCompetitors
 from .korean_injection import KoreanInjection
 from .korean_pii import KoreanPII
+from .korean_semantic import KoreanSemantic
 from .ban_substrings import BanSubstrings
 from .ban_topics import BanTopics
 from .bias import Bias
@@ -52,5 +53,6 @@ __all__ = [
     "URLReachability",
     "KoreanInjection",
     "KoreanPII",
+    "KoreanSemantic",
     "get_scanner_by_name",
 ]
