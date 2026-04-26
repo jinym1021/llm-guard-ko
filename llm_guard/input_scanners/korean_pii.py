@@ -16,7 +16,8 @@ import re
 from pathlib import Path
 from typing import Pattern
 
-from llm_guard.input_scanners.korean_patterns import KOREAN_PII_PATTERNS, load_pii_rules
+from llm_guard.patterns.korean import KOREAN_PII_PATTERNS
+from llm_guard.input_scanners.korean_patterns import load_pii_rules
 
 REDACTION_MARKER = "[REDACTED]"
 
